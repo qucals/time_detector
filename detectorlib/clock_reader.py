@@ -3,8 +3,6 @@ import cv2
 import numpy as np
 
 from typing import Any, Tuple
-from cv2 import circle
-
 from detectorlib import utils
 
 
@@ -24,7 +22,7 @@ class _CircleDetector:
     def __init__(self) -> None:
         pass
 
-    def get_circle(self, a_image):
+    def get_circle(self, a_image, a_select: bool = True):
         height, width, _ = a_image.shape
         diagonal = math.sqrt(height ** 2 + width ** 2)
 
@@ -45,10 +43,18 @@ class _CircleDetector:
             circles = self._filter_circles((height, width), circles)
 
             _, x, y, r = circles[0]
-            cv2.circle(a_image, (x, y), r, (0, 255, 0), 4)
-            cv2.rectangle(a_image, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
 
-        return a_image
+            rect_x = x - r
+            rect_y = y - r
+            crop_image = a_image[rect_y:(rect_y + 2 * r), rect_x:(rect_x + 2 * r)]
+
+            if a_select:
+                cv2.circle(a_image, (x, y), r, (0, 255, 0), 4)
+                cv2.rectangle(a_image, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+        else:
+            crop_image = a_image
+
+        return crop_image
 
     def _blur_image(self, a_image):
         blur = cv2.GaussianBlur(a_image, (7, 7), 1.5)
