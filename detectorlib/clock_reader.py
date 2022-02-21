@@ -26,17 +26,18 @@ class _CircleDetector:
 
     def get_circle(self, a_image):
         height, width, _ = a_image.shape
-        # diagonal = math.sqrt(height ** 2 + width ** 2)
+        diagonal = math.sqrt(height ** 2 + width ** 2)
 
         gray = cv2.cvtColor(a_image, cv2.COLOR_BGR2GRAY)
         blur = self._blur_image(gray)
 
         circles = cv2.HoughCircles(
-            blur,
-            cv2.HOUGH_GRADIENT,
-            40,
-            100,
-            param1=200,
+            image=blur,
+            method=cv2.HOUGH_GRADIENT_ALT,
+            dp=1,
+            minDist=10,
+            param1=250,
+            param2=0.9,
         )
 
         if circles is not None:
