@@ -1,3 +1,4 @@
+import logging
 import math
 import cv2
 import numpy as np
@@ -13,18 +14,23 @@ class ClockReader:
     def get_time(self, a_image):
         pass
 
-    def get_time_with_image(self, a_image) -> Tuple[str, Any]:
-        circle = self._circle_detector.get_circle(a_image)
-        return "", circle
+    def get_time_with_image(self, a_image) -> Tuple[str, Any, Any]:
+        circle = self._circle_detector.get_circle(a_image, a_max_radius=220, a_select=False)
+        small_circle = self._circle_detector.get_circle(circle.copy(), a_max_radius=60, a_select=False)
+
+        return "", circle, small_circle
 
 
 class _CircleDetector:
     def __init__(self) -> None:
         pass
 
-    def get_circle(self, a_image, a_select: bool = True):
+    def get_circle(self, a_image, a_max_radius=None, a_select: bool = True):
         height, width, _ = a_image.shape
         diagonal = math.sqrt(height ** 2 + width ** 2)
+
+        if a_max_radius is None:
+            a_max_radius = int(diagonal)
 
         gray = cv2.cvtColor(a_image, cv2.COLOR_BGR2GRAY)
         blur = self._blur_image(gray)
@@ -36,6 +42,9 @@ class _CircleDetector:
             minDist=10,
             param1=250,
             param2=0.9,
+            # minRadius=55,
+            # maxRadius=220,
+            maxRadius=a_max_radius
         )
 
         if circles is not None:
@@ -57,7 +66,7 @@ class _CircleDetector:
         return crop_image
 
     def _blur_image(self, a_image):
-        blur = cv2.GaussianBlur(a_image, (7, 7), 1.5)
+        blur = cv2.GaussianBlur(a_image, (11, 11), 1.5)
         return blur
 
     def _filter_circles(self, a_size_image: Tuple[int, int], a_circles):

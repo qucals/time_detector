@@ -3,6 +3,8 @@
 import cv2
 import logging
 
+import numpy as np
+
 from detectorlib import clock_reader, icamera
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
@@ -23,7 +25,12 @@ class Window:
         while True:
             frame = self.icamera.frame
             # time = self.clock_reader.get_time(frame)
-            time, frame = self.clock_reader.get_time_with_image(frame)
+            time, first, second = self.clock_reader.get_time_with_image(frame)
+
+            height, width, _ = first.shape
+            second = cv2.resize(second, (height, width))
+
+            frame = np.concatenate((first, second), axis=0)
 
             # print(f'Распознанное время: {time}')
 
