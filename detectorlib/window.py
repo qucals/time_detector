@@ -27,13 +27,15 @@ class Window:
             # time = self.clock_reader.get_time(frame)
             time, first, second = self.clock_reader.get_time_with_image(frame)
 
-            height, width, _ = first.shape
+            try:
+                height, width, _ = first.shape
+            except Exception as ex:
+                height, width = first.shape
+
             second = cv2.resize(second, (height, width))
 
             frame = np.concatenate((first, second), axis=0)
-
             # print(f'Распознанное время: {time}')
-
             cv2.imshow('frame', frame)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
