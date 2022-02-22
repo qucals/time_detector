@@ -26,6 +26,7 @@ class Window:
             frame = self.icamera.frame
             # time = self.clock_reader.get_time(frame)
             time, first, second = self.clock_reader.get_time_with_image(frame)
+            # cv2.imshow('first', first)
 
             try:
                 height, width, _ = first.shape

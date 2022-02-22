@@ -9,6 +9,7 @@ from skimage.morphology import skeletonize
 
 from detectorlib import utils
 
+
 class ClockReader:
     def __init__(self) -> None:
         self._circle_detector = _CircleDetector()
@@ -18,10 +19,17 @@ class ClockReader:
         pass
 
     def get_time_with_image(self, a_image) -> Tuple[str, Any, Any]:
-        circle = self._circle_detector.detect(a_image, a_max_radius=220, a_select=False)
-        small_circle = self._circle_detector.detect(circle.copy(), a_max_radius=60, a_select=False)
+        circle = self._circle_detector.detect(
+            a_image, a_max_radius=220, a_select=False)
+        small_circle = self._circle_detector.detect(
+            circle.copy(), a_max_radius=60, a_select=False)
 
-        # circle = self._hand_detector.detect(circle.copy())
+        circle = self._hand_detector.detect(
+            circle.copy(), a_min_length=80, a_max_length=120)
+        small_circle = self._hand_detector.detect(
+            small_circle.copy(), a_min_length=20, a_max_length=25,
+            a_show=True, a_id_contour=0,
+        )
 
         return "", circle, small_circle
 
@@ -61,11 +69,13 @@ class _CircleDetector:
 
             rect_x = x - r
             rect_y = y - r
-            crop_image = cut_image[rect_y:(rect_y + 2 * r), rect_x:(rect_x + 2 * r)]
+            crop_image = cut_image[rect_y:(
+                rect_y + 2 * r), rect_x:(rect_x + 2 * r)]
 
             if a_select:
                 cv2.circle(a_image, (x, y), r, (0, 255, 0), 4)
-                cv2.rectangle(a_image, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+                cv2.rectangle(a_image, (x - 5, y - 5),
+                              (x + 5, y + 5), (0, 128, 255), -1)
 
             result_image = crop_image
         else:
@@ -104,20 +114,23 @@ class _HandDetector:
     def __init__(self) -> None:
         pass
 
-    def detect(self, a_image) -> Any:
+    def detect(self, a_image, a_min_length, a_max_length, a_id_contour=2, a_show=False) -> Any:
         gray = cv2.cvtColor(a_image, cv2.COLOR_BGR2GRAY)
-        thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)[1]
+        blur = cv2.GaussianBlur(gray, (3, 3), 1.5)
+
+        thresh = cv2.threshold(
+            blur, 128, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
         thresh = 255 - thresh
 
-        return thresh
-
         cntrs_info = []
-        contours = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        contours = cv2.findContours(
+            thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_KCOS)
+
         contours = contours[0] if len(contours) == 2 else contours[1]
-        index=0
+        index = 0
         for cntr in contours:
             area = cv2.contourArea(cntr)
-            cntrs_info.append((index,area))
+            cntrs_info.append((index, area))
             index = index + 1
 
         # sort contours by area
@@ -127,25 +140,35 @@ class _HandDetector:
 
         # get third largest contour
         arms = np.zeros_like(thresh)
-        index_third = cntrs_info[2][0]
-        cv2.drawContours(arms,[contours[index_third]],0,(1),-1)
+        index_third = cntrs_info[a_id_contour][0]
+        cv2.drawContours(arms, [contours[index_third]], 0, (1), -1)
 
-        #arms=cv2.ximgproc.thinning(arms)
         arms_thin = skeletonize(arms)
-        arms_thin = (255*arms_thin).clip(0,255).astype(np.uint8)
+        arms_thin = (255 * arms_thin).clip(0, 255).astype(np.uint8)
+
+        # if a_show:
+        #     return arms_thin
 
         # get hough lines and draw on copy of input
         result = a_image.copy()
-        lineThresh = 15
-        minLineLength = 20
-        maxLineGap = 100
-        lines = cv2.HoughLinesP(arms_thin, 1, np.pi/180, lineThresh, None, minLineLength, maxLineGap)
+        lineThresh = 40
+        minLineLength = a_min_length
+        maxLineGap = a_max_length
+        lines = cv2.HoughLinesP(arms_thin,
+                                1,
+                                np.pi/180,
+                                lineThresh,
+                                None,
+                                minLineLength,
+                                maxLineGap
+                                )
 
-        for [line] in lines:
-            x1 = line[0]
-            y1 = line[1]
-            x2 = line[2]
-            y2 = line[3]
-            cv2.line(result, (x1,y1), (x2,y2), (0,0,255), 2)
+        if lines is not None:
+            for [line] in lines:
+                x1 = line[0]
+                y1 = line[1]
+                x2 = line[2]
+                y2 = line[3]
+                cv2.line(result, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
         return result
